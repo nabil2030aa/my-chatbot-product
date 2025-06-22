@@ -100,22 +100,6 @@
         .whatsapp-btn:hover {
             background-color: #1da851; /* Darker WhatsApp green */
         }
-        .read-btn {
-            background-color: #f97316; /* Orange */
-            color: white;
-            border: none;
-        }
-        .read-btn:hover {
-            background-color: #ea580c; /* Darker orange */
-        }
-        .stop-read-btn {
-            background-color: #ef4444; /* Red */
-            color: white;
-            border: none;
-        }
-        .stop-read-btn:hover {
-            background-color: #dc2626; /* Darker red */
-        }
         .chat-input {
             display: flex;
             padding: 1.5rem;
@@ -161,12 +145,6 @@
         }
         .message-box.show {
             opacity: 1;
-        }
-        /* Speaker icon styling */
-        .speaker-icon {
-            width: 1.25rem; /* Adjust size as needed */
-            height: 1.25rem;
-            fill: currentColor; /* Inherit color from button text */
         }
         /* Responsive adjustments */
         @media (max-width: 640px) {
@@ -310,7 +288,7 @@
                 price: "820 ريال سعودي للحبه"
             },
             {
-                size: "12 هنش", // New product addition
+                size: "12 هنش",
                 type: "صيني (محافظات)",
                 thickness: "5 ملي",
                 length: "5.90 متر",
@@ -337,9 +315,6 @@
         const sendMessageBtn = document.getElementById('sendMessage');
         const messageBox = document.getElementById('messageBox');
         const whatsappNumber = "967772522223"; // Your WhatsApp number
-
-        let currentUtterance = null; // To keep track of the current speech synthesis utterance
-        let arabicVoice = null; // To store the selected Arabic voice
 
         /**
          * Displays a temporary message box.
@@ -395,54 +370,6 @@
         }
 
         /**
-         * Initiates speech synthesis for a given text.
-         * @param {string} text - The text to speak.
-         */
-        function speakText(text) {
-            if ('speechSynthesis' in window) {
-                // Stop any ongoing speech
-                window.speechSynthesis.cancel();
-
-                currentUtterance = new SpeechSynthesisUtterance(text);
-                currentUtterance.lang = 'ar-SA'; // Try to set Arabic voice (Saudi Arabia)
-
-                // Try to get voices and set Arabic voice if available
-                // If voices are not yet loaded, wait for the onvoiceschanged event
-                if (window.speechSynthesis.getVoices().length === 0) {
-                     window.speechSynthesis.onvoiceschanged = () => {
-                         const voices = window.speechSynthesis.getVoices();
-                         arabicVoice = voices.find(voice => voice.lang.startsWith('ar'));
-                         if (arabicVoice) {
-                             currentUtterance.voice = arabicVoice;
-                         }
-                         window.speechSynthesis.speak(currentUtterance);
-                     };
-                } else {
-                    // Voices are already loaded
-                    if (!arabicVoice) { // If arabicVoice hasn't been set yet
-                         arabicVoice = window.speechSynthesis.getVoices().find(voice => voice.lang.startsWith('ar'));
-                    }
-                    if (arabicVoice) {
-                        currentUtterance.voice = arabicVoice;
-                    }
-                    window.speechSynthesis.speak(currentUtterance);
-                }
-            } else {
-                showMessageBox('عذراً، متصفحك لا يدعم قراءة الصوت.');
-                console.warn("Speech Synthesis API not supported.");
-            }
-        }
-
-        /**
-         * Stops any ongoing speech synthesis.
-         */
-        function stopSpeech() {
-            if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
-                window.speechSynthesis.cancel();
-            }
-        }
-
-        /**
          * Processes the user's input and displays product information.
          */
         function processInput() {
@@ -451,9 +378,6 @@
 
             addMessage(input, 'user');
             userInput.value = ''; // Clear input field
-
-            // Stop any speech when new input is given
-            stopSpeech();
 
             // Convert Eastern Arabic numerals to Western before processing
             input = convertEasternToWesternNumerals(input);
@@ -483,20 +407,13 @@
                         <strong>الطول:</strong> ${product.length}<br>
                         <strong>السعر:</strong> ${product.price}
                     `;
-                    const productPlainText = cleanHtmlForText(productHtml); // Clean HTML for WhatsApp/copy/speech
+                    const productPlainText = cleanHtmlForText(productHtml); // Clean HTML for WhatsApp/copy
 
                     responseHtml += `${productHtml}<br>`; // Display HTML in chat
                     responseHtml += `
                         <div class="product-actions" style="margin-top: 0.5rem; margin-bottom: 1rem;">
                             <button class="copy-btn" onclick="copyProductDetails('${productPlainText.replace(/'/g, "\\'")}')">نسخ التفاصيل</button>
                             <a href="https://wa.me/${whatsappNumber}?text=${encodeURIComponent('أرغب في الاستفسار عن المنتج:\n' + productPlainText)}" target="_blank" class="whatsapp-btn">طلب المنتج عبر الواتساب</a>
-                            <button class="read-btn" onclick="speakText('${productPlainText.replace(/'/g, "\\'")}')">
-                                قراءة بصوت
-                                <svg class="speaker-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M14 3.23V5.29C16.89 6.15 19 8.83 19 12C19 15.17 16.89 17.85 14 18.71V20.77C18.05 19.82 21 16.27 21 12C21 7.73 18.05 4.18 14 3.23ZM16.5 12C16.5 10.23 15.68 8.65 14.41 7.64L14.71 6.94C16.21 8.04 17 9.94 17 12C17 14.06 16.21 15.96 14.71 17.06L14.41 16.36C15.68 15.35 16.5 13.77 16.5 12ZM12 4L8 8H4V16H8L12 20V4Z"/>
-                                </svg>
-                            </button>
-                            <button class="stop-read-btn" onclick="stopSpeech()">إيقاف الصوت</button>
                         </div>
                     `;
                     if (index < filteredProducts.length - 1) {
@@ -526,29 +443,8 @@
             document.body.removeChild(textarea);
         }
 
-        // Expose functions to the global scope so they can be called from onclick
+        // Expose function to the global scope so it can be called from onclick
         window.copyProductDetails = copyProductDetails;
-        window.speakText = speakText;
-        window.stopSpeech = stopSpeech;
-
-        // Initialize voices once they are available. This is crucial for SpeechSynthesis.
-        // This is a more robust way to ensure voices are loaded before trying to use them.
-        if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = () => {
-                const voices = window.speechSynthesis.getVoices();
-                arabicVoice = voices.find(voice => voice.lang.startsWith('ar'));
-                if (!arabicVoice) {
-                    console.warn("No Arabic voice found. Speech synthesis might use a default or not work as expected.");
-                }
-            };
-        } else {
-             // Fallback for browsers that don't support onvoiceschanged, try to get voices immediately.
-             const voices = window.speechSynthesis.getVoices();
-             arabicVoice = voices.find(voice => voice.lang.startsWith('ar'));
-             if (!arabicVoice) {
-                console.warn("No Arabic voice found. Speech synthesis might use a default or not work as expected.");
-             }
-        }
 
         // Event listeners
         sendMessageBtn.addEventListener('click', processInput);
