@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بوت دردشة المنتجات</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .chat-container {
+            background-color: #ffffff; /* White card background */
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Soft shadow */
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #e2e8f0; /* Light border */
+        }
+        .chat-header {
+            background: linear-gradient(to right, #6366f1, #8b5cf6); /* Purple gradient */
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+            border-top-left-radius: 1.5rem;
+            border-top-right-radius: 1.5rem;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            max-height: 500px; /* Max height for messages, scrolls if overflows */
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .message-bubble {
+            padding: 0.75rem 1.25rem;
+            border-radius: 1.5rem; /* Rounded bubbles */
+            max-width: 80%;
+            word-wrap: break-word;
+            line-height: 1.5;
+            position: relative; /* For button positioning */
+        }
+        .user-message {
+            background-color: #e0f2fe; /* Light blue for user */
+            align-self: flex-end;
+            color: #1e40af; /* Darker blue text */
+        }
+        .bot-message {
+            background-color: #f0fdf4; /* Light green for bot */
+            align-self: flex-start;
+            color: #166534; /* Darker green text */
+        }
+        .product-actions {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap; /* Allow buttons to wrap */
+            justify-content: flex-end; /* Align buttons to the right in LTR context */
+        }
+        .product-actions button, .product-actions a {
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem; /* Smaller rounded corners for buttons */
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            text-decoration: none; /* Remove underline for links */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem; /* Space between text and icon */
+        }
+        .copy-btn {
+            background-color: #a78bfa; /* Light purple */
+            color: white;
+            border: none;
+        }
+        .copy-btn:hover {
+            background-color: #8b5cf6; /* Darker light purple */
+        }
+        .whatsapp-btn {
+            background-color: #25d366; /* WhatsApp green */
+            color: white;
+            border: none;
+        }
+        .whatsapp-btn:hover {
+            background-color: #1da851; /* Darker WhatsApp green */
+        }
+        .read-btn {
+            background-color: #f97316; /* Orange */
+            color: white;
+            border: none;
+        }
+        .read-btn:hover {
+            background-color: #ea580c; /* Darker orange */
+        }
+        .stop-read-btn {
+            background-color: #ef4444; /* Red */
+            color: white;
+            border: none;
+        }
+        .stop-read-btn:hover {
+            background-color: #dc2626; /* Darker red */
+        }
+        .chat-input {
+            display: flex;
+            padding: 1.5rem;
+            border-top: 1px solid #e2e8f0;
+            background-color: #f8fafc; /* Lighter background for input area */
+        }
+        .chat-input input {
+            flex-grow: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 1.5rem;
+            outline: none;
+            font-size: 1rem;
+            text-align: right; /* Right align for Arabic input */
+        }
+        .chat-input button {
+            background-color: #6366f1; /* Purple button */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 1.5rem;
+            margin-right: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .chat-input button:hover {
+            background-color: #4f46e5; /* Darker purple on hover */
+        }
+        /* Message box for copy confirmation */
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50; /* Green */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+        /* Speaker icon styling */
+        .speaker-icon {
+            width: 1.25rem; /* Adjust size as needed */
+            height: 1.25rem;
+            fill: currentColor; /* Inherit color from button text */
+        }
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .chat-container {
+                border-radius: 0; /* Full width on small screens */
+                height: 100vh;
+                max-height: unset;
+            }
+            body {
+                padding: 0;
+            }
+            .chat-messages {
+                padding: 1rem;
+            }
+            .chat-input {
+                padding: 1rem;
+            }
+            .chat-input button {
+                margin-right: 0.5rem;
+            }
+            .product-actions {
+                justify-content: center; /* Center buttons on small screens */
+            }
+            .product-actions button, .product-actions a {
+                flex-grow: 1; /* Make buttons take full width if wrapped */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1 class="text-3xl font-bold mb-2">مرحباً بك في المؤسسة اليمنية للأنابيب</h1>
+            <h2 class="text-xl font-semibold">محلات الدعبوش للحديد - صنعاء</h2>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+            <div class="bot-message message-bubble">
+                مرحباً! أنا بوت دردشة المنتجات الخاص بالمؤسسة اليمنية للأنابيب.
+                <br>
+                يمكنك اختيار المقاس المطلوب. اكتب المقاس (مثلاً: 6، 8، 10، 12، 14، 18، 20) أو بأرقام عربية (مثلاً: ٦، ٨، ١٠) وسيظهر لك قائمة السماكات والأنواع المتوفرة مع السعر.
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="ادخل المقاس هنا..." dir="rtl">
+            <button id="sendMessage">إرسال</button>
+        </div>
+    </div>
+    <div id="messageBox" class="message-box"></div>
+
+    <script>
+        // Product data in Arabic
+        const products = [
+            {
+                size: "6 هنش",
+                type: "سعودي",
+                thickness: "4.87 نخب أول",
+                length: "12 متر",
+                price: "1500 ريال سعودي للحبه"
+            },
+            {
+                size: "6 هنش",
+                type: "سعودي",
+                thickness: "4.8 نخب أول",
+                length: "6 متر",
+                price: "750 ريال سعودي للحبه"
+            },
+            {
+                size: "6 هنش",
+                type: "سعودي",
+                thickness: "4.8 نخب ثاني",
+                length: "6 متر، 9 متر، 11 متر",
+                price: "125 ريال سعودي للمتر"
+            },
+            {
+                size: "6 هنش",
+                type: "سعودي",
+                thickness: "5.6 ملي نخب ثاني",
+                length: "10 متر، 11 متر",
+                price: "130 ريال سعودي للمتر"
+            },
+            {
+                size: "12 هنش",
+                type: "سعودي (محافظات)",
+                thickness: "5.16 ضغط 203",
+                length: "6 متر",
+                price: "1550 ريال سعودي للحبه"
+            },
+            {
+                size: "12 هنش",
+                type: "سعودي (محافظات)",
+                thickness: "5.56 ضغط 219",
+                length: "6 متر",
+                price: "1750 ريال سعودي للحبه"
+            },
+            {
+                size: "12 هنش",
+                type: "سعودي (محافظات)",
+                thickness: "6.35 ضغط 250 جافي",
+                price: "1950 ريال سعودي للحبه"
+            },
+            {
+                size: "14 هنش",
+                type: "سعودي (محافظات)",
+                thickness: "5.56 ضغط 219",
+                length: "6 متر",
+                price: "1900 ريال سعودي للحبه"
+            },
+            {
+                size: "8 هنش",
+                type: "سعودي (محافظات)",
+                thickness: "4.8 ضغط 188",
+                length: "6 متر",
+                price: "715 ريال سعودي للحبه"
+            },
+            {
+                size: "8 هنش",
+                type: "سعودي (محافظات)",
+                thickness: "6.35 ملي ضغط 250",
+                length: "6 متر",
+                price: "1300 ريال سعودي للحبه"
+            },
+            {
+                size: "10 هنش",
+                type: "سعودي (محافظات)",
+                thickness: "5.2 ضغط 203",
+                length: "6 متر",
+                price: "1200 ريال سعودي للحبه"
+            },
+            {
+                size: "8 هنش",
+                type: "صيني (محافظات)",
+                thickness: "4.5 ملي",
+                length: "5.90 متر",
+                price: "586 ريال سعودي للحبه"
+            },
+            {
+                size: "10 هنش",
+                type: "صيني (محافظات)",
+                thickness: "5 ملي",
+                length: "5.90 متر",
+                price: "820 ريال سعودي للحبه"
+            },
+            {
+                size: "12 هنش", // New product addition
+                type: "صيني (محافظات)",
+                thickness: "5 ملي",
+                length: "5.90 متر",
+                price: "1050 ريال سعودي للحبه"
+            },
+            {
+                size: "18 هنش",
+                type: "سعودي",
+                thickness: "10.31 ملي",
+                length: "6 متر",
+                price: "900 ريال سعودي للمتر"
+            },
+            {
+                size: "20 هنش",
+                type: "سعودي",
+                thickness: "9.5 ملي",
+                length: "11.70 متر",
+                price: "950 ريال سعودي للمتر"
+            }
+        ];
+
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const sendMessageBtn = document.getElementById('sendMessage');
+        const messageBox = document.getElementById('messageBox');
+        const whatsappNumber = "967772522223"; // Your WhatsApp number
+
+        let currentUtterance = null; // To keep track of the current speech synthesis utterance
+        let arabicVoice = null; // To store the selected Arabic voice
+
+        /**
+         * Displays a temporary message box.
+         * @param {string} message - The message to display.
+         */
+        function showMessageBox(message) {
+            messageBox.textContent = message;
+            messageBox.classList.add('show');
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000); // Hide after 3 seconds
+        }
+
+        /**
+         * Adds a message to the chat display.
+         * @param {string} message - The message content.
+         * @param {string} sender - 'user' or 'bot'.
+         */
+        function addMessage(message, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message-bubble');
+            if (sender === 'user') {
+                messageDiv.classList.add('user-message');
+            } else {
+                messageDiv.classList.add('bot-message');
+            }
+            messageDiv.innerHTML = message; // Use innerHTML to allow for line breaks and basic formatting
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to bottom
+        }
+
+        /**
+         * Cleans HTML tags from a string and replaces <br> with newline characters.
+         * @param {string} htmlString - The string containing HTML.
+         * @returns {string} The cleaned plain text string.
+         */
+        function cleanHtmlForText(htmlString) {
+            // Replace <br> tags with newline characters first
+            let cleanedText = htmlString.replace(/<br\s*\/?>/g, '\n');
+            // Then remove any remaining HTML tags
+            cleanedText = cleanedText.replace(/<[^>]*>/g, '');
+            // Trim whitespace from each line and join them back
+            return cleanedText.split('\n').map(line => line.trim()).filter(line => line !== '').join('\n');
+        }
+
+        /**
+         * Converts Eastern Arabic numerals to Western Arabic numerals.
+         * @param {string} text - The input string which might contain Eastern Arabic numerals.
+         * @returns {string} The string with Eastern Arabic numerals converted to Western Arabic.
+         */
+        function convertEasternToWesternNumerals(text) {
+            return text.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+        }
+
+        /**
+         * Initiates speech synthesis for a given text.
+         * @param {string} text - The text to speak.
+         */
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                // Stop any ongoing speech
+                window.speechSynthesis.cancel();
+
+                currentUtterance = new SpeechSynthesisUtterance(text);
+                currentUtterance.lang = 'ar-SA'; // Try to set Arabic voice (Saudi Arabia)
+
+                // Try to get voices and set Arabic voice if available
+                // If voices are not yet loaded, wait for the onvoiceschanged event
+                if (window.speechSynthesis.getVoices().length === 0) {
+                     window.speechSynthesis.onvoiceschanged = () => {
+                         const voices = window.speechSynthesis.getVoices();
+                         arabicVoice = voices.find(voice => voice.lang.startsWith('ar'));
+                         if (arabicVoice) {
+                             currentUtterance.voice = arabicVoice;
+                         }
+                         window.speechSynthesis.speak(currentUtterance);
+                     };
+                } else {
+                    // Voices are already loaded
+                    if (!arabicVoice) { // If arabicVoice hasn't been set yet
+                         arabicVoice = window.speechSynthesis.getVoices().find(voice => voice.lang.startsWith('ar'));
+                    }
+                    if (arabicVoice) {
+                        currentUtterance.voice = arabicVoice;
+                    }
+                    window.speechSynthesis.speak(currentUtterance);
+                }
+            } else {
+                showMessageBox('عذراً، متصفحك لا يدعم قراءة الصوت.');
+                console.warn("Speech Synthesis API not supported.");
+            }
+        }
+
+        /**
+         * Stops any ongoing speech synthesis.
+         */
+        function stopSpeech() {
+            if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        /**
+         * Processes the user's input and displays product information.
+         */
+        function processInput() {
+            let input = userInput.value.trim();
+            if (!input) return;
+
+            addMessage(input, 'user');
+            userInput.value = ''; // Clear input field
+
+            // Stop any speech when new input is given
+            stopSpeech();
+
+            // Convert Eastern Arabic numerals to Western before processing
+            input = convertEasternToWesternNumerals(input);
+
+            // Extract the number from the user's input (e.g., "6" from "6 هنش" or just "6")
+            const sizeMatch = input.match(/\d+/);
+            const requestedSizeNum = sizeMatch ? parseInt(sizeMatch[0]) : null;
+
+            if (requestedSizeNum === null || isNaN(requestedSizeNum)) {
+                addMessage('عذراً، لم أستطع فهم المقاس المطلوب. يرجى إدخال رقم المقاس فقط (مثلاً: 6، 8، 10، 12، 14، 18، 20) بأرقام غربية أو عربية.', 'bot');
+                return;
+            }
+
+            // Filter products based on the requested size
+            const filteredProducts = products.filter(product =>
+                product.size.startsWith(requestedSizeNum + " هنش")
+            );
+
+            if (filteredProducts.length === 0) {
+                addMessage(`عذراً، لا توجد منتجات متوفرة للمقاس ${requestedSizeNum} هنش حالياً.`, 'bot');
+            } else {
+                let responseHtml = `المنتجات المتوفرة للمقاس ${requestedSizeNum} هنش هي:<br><br>`;
+                filteredProducts.forEach((product, index) => {
+                    const productHtml = `
+                        <strong>النوع:</strong> ${product.type}<br>
+                        <strong>السماكة:</strong> ${product.thickness}<br>
+                        <strong>الطول:</strong> ${product.length}<br>
+                        <strong>السعر:</strong> ${product.price}
+                    `;
+                    const productPlainText = cleanHtmlForText(productHtml); // Clean HTML for WhatsApp/copy/speech
+
+                    responseHtml += `${productHtml}<br>`; // Display HTML in chat
+                    responseHtml += `
+                        <div class="product-actions" style="margin-top: 0.5rem; margin-bottom: 1rem;">
+                            <button class="copy-btn" onclick="copyProductDetails('${productPlainText.replace(/'/g, "\\'")}')">نسخ التفاصيل</button>
+                            <a href="https://wa.me/${whatsappNumber}?text=${encodeURIComponent('أرغب في الاستفسار عن المنتج:\n' + productPlainText)}" target="_blank" class="whatsapp-btn">طلب المنتج عبر الواتساب</a>
+                            <button class="read-btn" onclick="speakText('${productPlainText.replace(/'/g, "\\'")}')">
+                                قراءة بصوت
+                                <svg class="speaker-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M14 3.23V5.29C16.89 6.15 19 8.83 19 12C19 15.17 16.89 17.85 14 18.71V20.77C18.05 19.82 21 16.27 21 12C21 7.73 18.05 4.18 14 3.23ZM16.5 12C16.5 10.23 15.68 8.65 14.41 7.64L14.71 6.94C16.21 8.04 17 9.94 17 12C17 14.06 16.21 15.96 14.71 17.06L14.41 16.36C15.68 15.35 16.5 13.77 16.5 12ZM12 4L8 8H4V16H8L12 20V4Z"/>
+                                </svg>
+                            </button>
+                            <button class="stop-read-btn" onclick="stopSpeech()">إيقاف الصوت</button>
+                        </div>
+                    `;
+                    if (index < filteredProducts.length - 1) {
+                        responseHtml += `<hr class="my-2 border-t border-gray-300">`; // Separator
+                    }
+                });
+                addMessage(responseHtml, 'bot');
+            }
+        }
+
+        /**
+         * Copies product details to clipboard.
+         * @param {string} text - The text to copy.
+         */
+        function copyProductDetails(text) {
+            // Create a temporary textarea element
+            const textarea = document.createElement('textarea');
+            textarea.value = text; // Already cleaned plain text
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showMessageBox('تم نسخ التفاصيل بنجاح!');
+            } catch (err) {
+                showMessageBox('فشل في النسخ، يرجى المحاولة يدوياً.');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        // Expose functions to the global scope so they can be called from onclick
+        window.copyProductDetails = copyProductDetails;
+        window.speakText = speakText;
+        window.stopSpeech = stopSpeech;
+
+        // Initialize voices once they are available. This is crucial for SpeechSynthesis.
+        // This is a more robust way to ensure voices are loaded before trying to use them.
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => {
+                const voices = window.speechSynthesis.getVoices();
+                arabicVoice = voices.find(voice => voice.lang.startsWith('ar'));
+                if (!arabicVoice) {
+                    console.warn("No Arabic voice found. Speech synthesis might use a default or not work as expected.");
+                }
+            };
+        } else {
+             // Fallback for browsers that don't support onvoiceschanged, try to get voices immediately.
+             const voices = window.speechSynthesis.getVoices();
+             arabicVoice = voices.find(voice => voice.lang.startsWith('ar'));
+             if (!arabicVoice) {
+                console.warn("No Arabic voice found. Speech synthesis might use a default or not work as expected.");
+             }
+        }
+
+        // Event listeners
+        sendMessageBtn.addEventListener('click', processInput);
+        userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                processInput();
+            }
+        });
+    </script>
+</body>
+</html>
+
